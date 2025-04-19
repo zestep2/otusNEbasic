@@ -1,0 +1,28 @@
+enable
+configure terminal
+
+no ip domain-lookup
+hostname S2
+service password-encryption
+enable secret class
+banner motd #
+Unauthorized access is strictly prohibited. #
+
+interface vlan 1
+ip address 192.168.1.12 255.255.255.0
+no shutdown
+exit
+
+line con 0
+password cisco
+login
+logging synchronous
+exit
+
+line vty 0 4
+password cisco
+login
+exit
+
+end
+write memory

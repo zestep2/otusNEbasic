@@ -1,0 +1,30 @@
+! Базовая конфигурация
+enable
+configure terminal
+
+no ip domain-lookup
+hostname S1
+service password-encryption
+enable secret class
+banner motd #
+Unauthorized access is strictly prohibited. #
+
+
+line con 0
+password cisco
+login
+logging synchronous
+exit
+
+line vty 0 4
+password cisco
+login
+exit
+
+! Включаем образ с IPv6
+sdm prefer dual-ipv4-and-ipv6 default
+
+end
+write memory
+
+! Конец базовой конфигурации

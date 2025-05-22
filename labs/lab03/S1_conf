@@ -3,7 +3,7 @@ enable
 configure terminal
 
 no ip domain-lookup
-hostname S1
+hostname SW3
 service password-encryption
 enable secret class
 banner motd #
@@ -23,6 +23,16 @@ exit
 
 ! Включаем образ с IPv6
 sdm prefer dual-ipv4-and-ipv6 default
+
+! Настройка SSH
+ip domain-name skynet
+crypto key generate rsa general-keys modulus 2048
+ip ssh version 2
+username admin privilege 15 secret password
+
+line vty 0 4
+transport input ssh
+login local
 
 end
 write memory

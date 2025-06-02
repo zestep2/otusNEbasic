@@ -1,0 +1,29 @@
+enable
+configure terminal
+
+no ip domain-lookup
+hostname S3
+service password-encryption
+enable secret class
+banner motd #
+Unauthorized access is strictly prohibited. #
+
+line con 0
+password cisco
+login
+logging synchronous
+exit
+
+line vty 0 4
+password cisco
+login
+exit
+
+interface vlan 1
+ip address 192.168.1.3 255.255.255.0
+no shutdown
+exit
+
+end
+
+write memory

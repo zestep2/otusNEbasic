@@ -1,31 +1,23 @@
-#  Лабораторная работа - Настройка DHCPv6
+#  Лабораторная работа - Развертывание коммутируемой сети с резервными каналами
 #### Топология
 ![alt text](image.png)
 
 #### Таблица адресации
-| Устройство | Интерфейс  | IPv6-адрес               |
-|------------|------------|--------------------------|
-| R1         | G0/0/0     | 2001:db8:acad:2::1/64    |
-|            |            | fe80::1                  |
-| R1         | G0/0/1     | 2001:db8:acad:1::1/64    |
-|            |            | fe80::1                  |
-| R2         | G0/0/0     | 2001:db8:acad:2::2/64    |
-|            |            | fe80::2                  |
-| R2         | G0/0/1     | 2001:db8:acad:3::1/64    |
-|            |            | fe80::1                  |
-| PC-A       | NIC        | DHCP                     |
-| PC-B       | NIC        | DHCP                     |
+| Устройство | Интерфейс | IP-адрес     | Маска подсети    |
+|------------|-----------|--------------|------------------|
+| S1         | VLAN 1    | 192.168.1.1  | 255.255.255.0    |
+| S2         | VLAN 1    | 192.168.1.2  | 255.255.255.0    |
+| S3         | VLAN 1    | 192.168.1.3  | 255.255.255.0    |
 
-#### Задачи:
+#### Цели:
 - [Часть 1. Создание сети и настройка основных параметров устройства](#часть-1-создание-сети-и-настройка-основных-параметров-устройства)
-- [Часть 2. Проверка назначения адреса SLAAC от R1](#часть-2-проверка-назначения-адреса-slaac-от-r1)
-- [Часть 3. Настройка и проверка сервера DHCPv6 без гражданства на R1](#часть-3-настройка-и-проверка-сервера-dhcpv6-без-гражданства-на-r1)
-- [Часть 4. Настройка и проверка состояния DHCPv6 сервера на R1](#часть-4-настройка-и-проверка-состояния-dhcpv6-сервера-на-r1)
-- [Часть 5. Настройка и проверка DHCPv6 Relay на R2](#часть-5-настройка-и-проверка-dhcpv6-relay-на-r2)
+- [Часть 2. Выбор корневого моста](#часть-2-выбор-корневого-моста)
+- [Часть 3. Наблюдение за процессом выбора протоколом STP порта, исходя из стоимости портов](#часть-3-наблюдение-за-процессом-выбора-протоколом-stp-порта-исходя-из-стоимости-портов)
+- [Часть 4. Наблюдение за процессом выбора протоколом STP порта, исходя из приоритета портов](#часть-4-наблюдение-за-процессом-выбора-протоколом-stp-порта-исходя-из-приоритета-портов)
 
 
 ### Часть 1. Создание сети и настройка основных параметров устройства
-Подключаем сеть в соответствии с топологией, настраиваем узлы в соответсвии с топологией, настраиваем базовые параметры коммутаторов и маршрутизаторов. Указывает ipv6 адреса из таблицы, включает ipv6 маршрутизацию
+Подключаем сеть в соответствии с топологией, настриваем базовые параметры коммутатора и IP-адреса
 
 [Итоговый файл cpt для этой лабораторной](./lab_cpt.pkt)
 
@@ -33,198 +25,276 @@
 
 [Базовая настройка коммутатора S2](./S2_conf)
 
-[Базовая настройка маршрутизатора R1](./R1_conf)
+[Базовая настройка коммутатора S3](./S3_conf)
 
-[Базовая настройка маршрутизатора R2](./R2_conf)
+Все эхо-запросы от коммутаторов успешно проходят!
 
+### Часть 2. Выбор корневого моста
 
-Проверяем связность с помощью пинга адреса G0/0/1 R2 из R1:
+### Шаг 1. Отключите все порты на коммутаторах
 ```
-R1#ping 2001:db8:acad:3::1
-
-Type escape sequence to abort.
-Sending 5, 100-byte ICMP Echos to 2001:db8:acad:3::1, timeout is 2 seconds:
-!!!!!
-Success rate is 100 percent (5/5), round-trip min/avg/max = 0/0/0 ms
+interface range fa0/1-24,g0/1-2
+shutdown 
 ```
+Повторяем для S2,S3
 
-Все успешно!
-
-### Часть 2. Проверка назначения адреса SLAAC от R1
-
-Включите PC-A и убедитесь, что сетевой адаптер настроен для автоматической настройки IPv6:
-![alt text](image-1.png)
-Результат команды ipconfig показывает, что PC-A присвоил себе адрес из сети 2001:db8:1::/64
+### Шаг 2:	Настройте подключенные порты в качестве транковых
 ```
-C:\>ipconfig
-
-FastEthernet0 Connection:(default port)
-
-   Connection-specific DNS Suffix..: 
-   Link-local IPv6 Address.........: FE80::260:47FF:FE0A:B4B5
-   IPv6 Address....................: 2001:DB8:ACAD:1:260:47FF:FE0A:B4B5
-   IPv4 Address....................: 0.0.0.0
-   Subnet Mask.....................: 0.0.0.0
-   Default Gateway.................: FE80::1
-                                     0.0.0.0
+interface range fa0/1-4
+switchport trunk allowed vlan all
 ```
+Повторяем для S2,S3
 
-
-Вопрос: Откуда взялась часть адреса с идентификатором хоста?
-
-Ответ: сгенерирован на основе MAC-адреса (добавление FFFE в середину MAC-адреса)
-
-### Часть 3. Настройка и проверка сервера DHCPv6 без гражданства на R1
-
-
-### Шаг 1. Более подробно изучим конфигурацию PC-A
-a.	Выполните команду ipconfig /all на PC-A и посмотрим на результат
+### Шаг 3:	Включите порты F0/2 и F0/4 на всех коммутаторах
 ```
-C:\>ipconfig /all
-
-FastEthernet0 Connection:(default port)
-
-   Connection-specific DNS Suffix..: 
-   Physical Address................: 0060.470A.B4B5
-   Link-local IPv6 Address.........: FE80::260:47FF:FE0A:B4B5
-   IPv6 Address....................: 2001:DB8:ACAD:1:260:47FF:FE0A:B4B5
-   IPv4 Address....................: 0.0.0.0
-   Subnet Mask.....................: 0.0.0.0
-   Default Gateway.................: FE80::1
-                                     0.0.0.0
-   DHCP Servers....................: 0.0.0.0
-   DHCPv6 IAID.....................: 
-   DHCPv6 Client DUID..............: 00-01-00-01-D4-A3-EB-41-00-60-47-0A-B4-B5
-   DNS Servers.....................: ::
-                                     0.0.0.0
+interface range fa0/2,fa0/4
+no shutdown
 ```
-DNS-сервера нет
+Повторяем для S2,S3
 
-### Шаг 2. Настроим R1 для предоставления DHCPv6 без состояния для PC-A.
+### Шаг 4:	Отобразите данные протокола spanning-tree
+#### Для S1:
+```
+S1#show spanning-tree 
+VLAN0001
+  Spanning tree enabled protocol ieee
+  Root ID    Priority    32769
+             Address     0002.1736.A7AC
+             Cost        19
+             Port        4(FastEthernet0/4)
+             Hello Time  2 sec  Max Age 20 sec  Forward Delay 15 sec
 
-Создаем пул DHCP IPv6 на R1 с именем R1-STATELESS:
-```
-R1(config)#ipv6 dhcp pool R1-STATELESS
-R1(config-dhcpv6)#dns-server 2001:db8:acad::254
-R1(config-dhcpv6)#domain-name STATELESS.com
-```
-Настроим интерфейс G0/0/1 на R1, чтобы предоставить флаг конфигурации OTHER для локальной сети R1 и укажем только что созданный пул DHCP в качестве ресурса DHCP для этого интерфейса:
-```
-R1(config)# interface g0/0/1
-R1(config-if)#ipv6 nd other-config-flag 
-R1(config-if)#ipv6 dhcp server R1-STATELESS
-```
-Сохраняем конфигурациюю и перезапускаем PC-A:
-```
-C:\>ipconfig /all
+  Bridge ID  Priority    32769  (priority 32768 sys-id-ext 1)
+             Address     0060.47E4.93C8
+             Hello Time  2 sec  Max Age 20 sec  Forward Delay 15 sec
+             Aging Time  20
 
-FastEthernet0 Connection:(default port)
-
-   Connection-specific DNS Suffix..: STATELESS.com 
-   Physical Address................: 0060.470A.B4B5
-   Link-local IPv6 Address.........: FE80::260:47FF:FE0A:B4B5
-   IPv6 Address....................: 2001:DB8:ACAD:1:260:47FF:FE0A:B4B5
-   IPv4 Address....................: 0.0.0.0
-   Subnet Mask.....................: 0.0.0.0
-   Default Gateway.................: FE80::1
-                                     0.0.0.0
-   DHCP Servers....................: 0.0.0.0
-   DHCPv6 IAID.....................: 522232587
-   DHCPv6 Client DUID..............: 00-01-00-01-D4-A3-EB-41-00-60-47-0A-B4-B5
-   DNS Servers.....................: 2001:DB8:ACAD::254
-                                     0.0.0.0
+Interface        Role Sts Cost      Prio.Nbr Type
+---------------- ---- --- --------- -------- --------------------------------
+Fa0/2            Altn BLK 19        128.2    P2p
+Fa0/4            Root FWD 19        128.4    P2p
 ```
-Ура, DNS появился!
-
-Проверим связь с помощью пинга IP-адреса интерфейса G0/1 R2:
+#### Для S2:
 ```
-C:\>ping 2001:db8:acad:3::1
+S2#show spanning-tree 
+VLAN0001
+  Spanning tree enabled protocol ieee
+  Root ID    Priority    32769
+             Address     0002.1736.A7AC
+             Cost        19
+             Port        4(FastEthernet0/4)
+             Hello Time  2 sec  Max Age 20 sec  Forward Delay 15 sec
 
-Pinging 2001:db8:acad:3::1 with 32 bytes of data:
+  Bridge ID  Priority    32769  (priority 32768 sys-id-ext 1)
+             Address     000A.F3E6.A8A9
+             Hello Time  2 sec  Max Age 20 sec  Forward Delay 15 sec
+             Aging Time  20
 
-Reply from 2001:DB8:ACAD:3::1: bytes=32 time<1ms TTL=254
-Reply from 2001:DB8:ACAD:3::1: bytes=32 time<1ms TTL=254
-Reply from 2001:DB8:ACAD:3::1: bytes=32 time<1ms TTL=254
-Reply from 2001:DB8:ACAD:3::1: bytes=32 time<1ms TTL=254
-
-Ping statistics for 2001:DB8:ACAD:3::1:
-    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),
-Approximate round trip times in milli-seconds:
-    Minimum = 0ms, Maximum = 0ms, Average = 0ms
+Interface        Role Sts Cost      Prio.Nbr Type
+---------------- ---- --- --------- -------- --------------------------------
+Fa0/4            Root FWD 19        128.4    P2p
+Fa0/2            Desg FWD 19        128.2    P2p
 ```
-Связь есть, все хорошо)
+#### Для S3:
+```
+S3#show spanning-tree 
+VLAN0001
+  Spanning tree enabled protocol ieee
+  Root ID    Priority    32769
+             Address     0002.1736.A7AC
+             This bridge is the root
+             Hello Time  2 sec  Max Age 20 sec  Forward Delay 15 sec
 
-### Часть 4. Настройка и проверка состояния DHCPv6 сервера на R1
+  Bridge ID  Priority    32769  (priority 32768 sys-id-ext 1)
+             Address     0002.1736.A7AC
+             Hello Time  2 sec  Max Age 20 sec  Forward Delay 15 sec
+             Aging Time  20
 
-Создадим пул DHCPv6 на R1 для сети 2001:db8:acad:3:aaa::/80. Это предоставит адреса локальной сети, подключенной к интерфейсу G0/0/1 на R2. В составе пула зададим DNS-сервер 2001:db8:acad: :254 и доменное имя STATEFUL.com:
-```
-R1(config)#ipv6 dhcp pool R2-STATEFUL
-R1(config-dhcpv6)#address prefix 2001:db8:acad:3:aaa::/80
-R1(config-dhcpv6)#dns-server 2001:db8:acad::254
-R1(config-dhcpv6)#domain-name STATEFUL.com
-```
-Назначим только что созданный пул DHCPv6 интерфейсу g0/0/0 на R1:
-```
-R1(config)#inte g0/0/0
-R1(config-if)#ipv6 dhcp server R2-STATEFUL
+Interface        Role Sts Cost      Prio.Nbr Type
+---------------- ---- --- --------- -------- --------------------------------
+Fa0/4            Desg FWD 19        128.4    P2p
+Fa0/2            Desg FWD 19        128.2    P2p
 ```
 
-### Часть 5. Настройка и проверка DHCPv6 Relay на R2
-### Шаг 1. Включим PC-B и проверим адрес SLAAC, который он генерирует:
+
+С учетом выходных данных, поступающих с коммутаторов, ответьте на следующие вопросы. 
+
+Какой коммутатор является корневым мостом? 
+##### Ответ: S3
+
+Почему этот коммутатор был выбран протоколом spanning-tree в качестве корневого моста?
+##### Ответ: потому что у него был самый низкий приоритет из всех коммутаторов. Одинаковый административный прииоритет + одинаковый №влана дает равенство. Тогда побеждает коммутатор с наименьшим МАС-ом. Тут 0002.1736.A7AC оказался меньше чем 000A.F3E6.A8A9 (S2) и 0060.47E4.93C8 (S1)
+
+Какие порты на коммутаторе являются корневыми портами?
+##### Ответ: Для S1 Fa0/4 корневой. Для S2 Fa0/4 корневой.
+
+Какие порты на коммутаторе являются назначенными портами?
+##### Ответ: Для S2 Fa0/2 назначенный (designated). Для S3 Fa0/2 и Fa0/4 назначенный (designated).
+
+Какой порт отображается в качестве альтернативного и в настоящее время заблокирован?
+##### Ответ: Для S1 Fa0/2 отображается альтернативным и заблокировавн (Altn BLK)
+
+Почему протокол spanning-tree выбрал этот порт в качестве невыделенного (заблокированного) порта?
+##### Ответ: После выборов root bridge, коммутаторы выбрали root-порт с наименьшей стоимостью маршрута до root bridge. Далее они присвоили роли оставшимся портам (не root). При одинаковой стоимости на не-root портах начинается сраниваться приоритет bridge id и он оказался меньше (лучше) у S2 из-за его MAC-адреса (000A.F3E6.A8A9<0060.47E4.93C8)
+
+
+### Часть 3: Наблюдение за процессом выбора протоколом STP порта, исходя из стоимости портов
+
+### Шаг 1:	Определите коммутатор с заблокированным портом
+Как определили выше, это порт Fa0/2 на S1:
 ```
-C:\>ipconfig /all
-
-FastEthernet0 Connection:(default port)
-
-   Connection-specific DNS Suffix..: 
-   Physical Address................: 0009.7CAC.B8B8
-   Link-local IPv6 Address.........: FE80::209:7CFF:FEAC:B8B8
-   IPv6 Address....................: 2001:DB8:ACAD:3:209:7CFF:FEAC:B8B8
-   IPv4 Address....................: 0.0.0.0
-   Subnet Mask.....................: 0.0.0.0
-   Default Gateway.................: FE80::1
-                                     0.0.0.0
-   DHCP Servers....................: 0.0.0.0
-   DHCPv6 IAID.....................: 
-   DHCPv6 Client DUID..............: 00-01-00-01-B3-51-03-9C-00-09-7C-AC-B8-B8
-   DNS Servers.....................: ::
-                                     0.0.0.0
+Interface        Role Sts Cost      Prio.Nbr Type
+---------------- ---- --- --------- -------- --------------------------------
+Fa0/2            Altn BLK 19        128.2    P2p
+Fa0/4            Root FWD 19        128.4    P2p
 ```
-IPv6 адрес раздался с R2
 
-### Шаг 2. Настроим R2 в качестве агента DHCP-ретрансляции для локальной сети на G0/0/1:
+### Шаг 2:	Измените стоимость порта
+Изменяем стоимость root порта на S1:
 ```
-R2(config)#interface g0/0/1
-R2(config-if)#ipv6 nd managed-config-flag
-R2(config-if)#ipv6 dhcp relay destination 2001:db8:acad:2::1 g0/0/0
-                        ^
-% Invalid input detected at '^' marker.
-R2(config-if)#ipv6 dhcp ?
-  client  Act as an IPv6 DHCP client
-  server  Act as an IPv6 DHCP server
+S1(config)#interface fastEthernet 0/4
+S1(config-if)#spanning-tree vlan 1 cost 18
 ```
-Команда relay в CPT не работает, но по идее должно (но это не точно, что не работает, а не что должно)
-
-### Шаг 3. Попытка получить адрес IPv6 из DHCPv6 на PC-B.
-
-Откроем командную строку на PC-B и выполним команду ipconfig /all и проверим выходные данные, чтобы увидеть результаты операции ретрансляции DHCPv6 (но не работает из-за причин в шаге 2)
+### Шаг 3:	Просмотрите изменения протокола spanning-tree
 ```
-C:\>ipconfig /all
+S1#show spanning-tree 
+VLAN0001
+  Spanning tree enabled protocol ieee
+  Root ID    Priority    32769
+             Address     0002.1736.A7AC
+             Cost        18
+             Port        4(FastEthernet0/4)
+             Hello Time  2 sec  Max Age 20 sec  Forward Delay 15 sec
 
-FastEthernet0 Connection:(default port)
+  Bridge ID  Priority    32769  (priority 32768 sys-id-ext 1)
+             Address     0060.47E4.93C8
+             Hello Time  2 sec  Max Age 20 sec  Forward Delay 15 sec
+             Aging Time  20
 
-   Connection-specific DNS Suffix..: 
-   Physical Address................: 0009.7CAC.B8B8
-   Link-local IPv6 Address.........: FE80::209:7CFF:FEAC:B8B8
-   IPv6 Address....................: ::
-   IPv4 Address....................: 0.0.0.0
-   Subnet Mask.....................: 0.0.0.0
-   Default Gateway.................: FE80::1
-                                     0.0.0.0
-   DHCP Servers....................: 0.0.0.0
-   DHCPv6 IAID.....................: 328692804
-   DHCPv6 Client DUID..............: 00-01-00-01-B3-51-03-9C-00-09-7C-AC-B8-B8
-   DNS Servers.....................: ::
-                                     0.0.0.0
+Interface        Role Sts Cost      Prio.Nbr Type
+---------------- ---- --- --------- -------- --------------------------------
+Fa0/2            Desg FWD 19        128.2    P2p
+Fa0/4            Root FWD 18        128.4    P2p
 ```
-По идее выше должны быть адреса из пула R2-STATEFUL на R1
+```
+S2#show spanning-tree 
+VLAN0001
+  Spanning tree enabled protocol ieee
+  Root ID    Priority    32769
+             Address     0002.1736.A7AC
+             Cost        19
+             Port        4(FastEthernet0/4)
+             Hello Time  2 sec  Max Age 20 sec  Forward Delay 15 sec
+
+  Bridge ID  Priority    32769  (priority 32768 sys-id-ext 1)
+             Address     000A.F3E6.A8A9
+             Hello Time  2 sec  Max Age 20 sec  Forward Delay 15 sec
+             Aging Time  20
+
+Interface        Role Sts Cost      Prio.Nbr Type
+---------------- ---- --- --------- -------- --------------------------------
+Fa0/4            Root FWD 19        128.4    P2p
+Fa0/2            Altn BLK 19        128.2    P2p
+```
+
+#### Видим, что порт fa0/2 на S1 стал назначенным, а порт fa0/2 на S2 - альтернативным (было наоборот)
+
+
+Почему протокол spanning-tree заменяет ранее заблокированный порт на назначенный порт и блокирует порт, который был назначенным портом на другом коммутаторе?
+##### Ответ - потому что изменился приоритет по 1-му признаку - стоимости пути до root. Теперь на S1 он стал 18. На S2 приходит информация, что с порта fa0/2 до root стоимость 18. А от с S2 в сторону S1 указано 19. Значит надо блокировать порт с большим (худшим) приоритетом, это порт на S2
+
+
+### Шаг 4:	Удалите изменения стоимости порта
+```
+S1(config)#interface fastEthernet 0/4
+S1(config-if)#no spanning-tree vlan 1 cost 18
+```
+```
+S1#show spanning-tree 
+VLAN0001
+  Spanning tree enabled protocol ieee
+  Root ID    Priority    32769
+             Address     0002.1736.A7AC
+             Cost        19
+             Port        4(FastEthernet0/4)
+             Hello Time  2 sec  Max Age 20 sec  Forward Delay 15 sec
+
+  Bridge ID  Priority    32769  (priority 32768 sys-id-ext 1)
+             Address     0060.47E4.93C8
+             Hello Time  2 sec  Max Age 20 sec  Forward Delay 15 sec
+             Aging Time  20
+
+Interface        Role Sts Cost      Prio.Nbr Type
+---------------- ---- --- --------- -------- --------------------------------
+Fa0/2            Altn BLK 19        128.2    P2p
+Fa0/4            Root FWD 19        128.4    P2p
+```
+Все вернулось к прежнему, теперь порт заблокирован, а не назначен
+
+### Часть 4:	Наблюдение за процессом выбора протоколом STP порта, исходя из приоритета портов
+#### a.	Включите порты F0/1 и F0/3 на всех коммутаторах
+Пишем на коммутаторах:
+```
+interface range fa0/1,fa0/3
+no shutdown
+```
+#### b.	Проверяем состояние STP на некорневых коммутаторах:
+```
+S1#show spanning-tree 
+VLAN0001
+  Spanning tree enabled protocol ieee
+  Root ID    Priority    32769
+             Address     0002.1736.A7AC
+             Cost        19
+             Port        3(FastEthernet0/3)
+             Hello Time  2 sec  Max Age 20 sec  Forward Delay 15 sec
+
+  Bridge ID  Priority    32769  (priority 32768 sys-id-ext 1)
+             Address     0060.47E4.93C8
+             Hello Time  2 sec  Max Age 20 sec  Forward Delay 15 sec
+             Aging Time  20
+
+Interface        Role Sts Cost      Prio.Nbr Type
+---------------- ---- --- --------- -------- --------------------------------
+Fa0/1            Altn BLK 19        128.1    P2p
+Fa0/2            Altn BLK 19        128.2    P2p
+Fa0/3            Root FWD 19        128.3    P2p
+Fa0/4            Altn BLK 19        128.4    P2p
+```
+```
+S2#show spanning-tree 
+VLAN0001
+  Spanning tree enabled protocol ieee
+  Root ID    Priority    32769
+             Address     0002.1736.A7AC
+             Cost        19
+             Port        3(FastEthernet0/3)
+             Hello Time  2 sec  Max Age 20 sec  Forward Delay 15 sec
+
+  Bridge ID  Priority    32769  (priority 32768 sys-id-ext 1)
+             Address     000A.F3E6.A8A9
+             Hello Time  2 sec  Max Age 20 sec  Forward Delay 15 sec
+             Aging Time  20
+
+Interface        Role Sts Cost      Prio.Nbr Type
+---------------- ---- --- --------- -------- --------------------------------
+Fa0/1            Desg FWD 19        128.1    P2p
+Fa0/4            Altn BLK 19        128.4    P2p
+Fa0/3            Root FWD 19        128.3    P2p
+Fa0/2            Desg FWD 19        128.2    P2p
+```
+
+#### Root-порт на обоих коммутаторах переключился на fa0/3 (вместо fa0/4)
+
+
+### Вопросы-ответы:
+Какой порт выбран протоколом STP в качестве порта корневого моста на каждом коммутаторе некорневого моста? Почему протокол STP выбрал эти порты в качестве портов корневого моста на этих коммутаторах?
+##### Ответ: С наименьшим приоритетом, при прочих равных с наименьшим номером порта. В обоих случаях это оказался fa0/3.
+
+1.	Какое значение протокол STP использует первым после выбора корневого моста, чтобы определить выбор порта?
+##### Ответ: стоимость (cost) до root моста на портах
+2.	Если первое значение на двух портах одинаково, какое следующее значение будет использовать протокол STP при выборе порта?
+##### Ответ: приоритет bridge id (bid). Административно настраиваемый, если равен, например по умолчанию - то приоритет за меньшим MAC-адресом
+3.	Если оба значения на двух портах равны, каким будет следующее значение, которое использует протокол STP при выборе порта?
+##### Ответ: приоритеты портов (128 + номер порта, чем меньше - тем лучше)
+

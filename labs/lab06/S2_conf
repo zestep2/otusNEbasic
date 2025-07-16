@@ -19,11 +19,11 @@ password cisco
 login
 exit
 
-interface range f0/1-4,f0/6-17,f0/19-24,g0/1-2
-shutdown
+interface vlan 1
+ip address 192.168.1.2 255.255.255.0
+no shutdown
+exit
 
 end
 
 write memory
-
-

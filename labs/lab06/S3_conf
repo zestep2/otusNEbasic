@@ -2,7 +2,7 @@ enable
 configure terminal
 
 no ip domain-lookup
-hostname S1
+hostname S3
 service password-encryption
 enable secret class
 banner motd #
@@ -20,10 +20,9 @@ login
 exit
 
 interface vlan 1
-ip address 192.168.1.1 255.255.255.0
+ip address 192.168.1.3 255.255.255.0
 no shutdown
 exit
-
 
 end
 

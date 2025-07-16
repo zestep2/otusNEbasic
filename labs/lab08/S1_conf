@@ -1,0 +1,28 @@
+enable
+configure terminal
+
+no ip domain-lookup
+hostname S1
+service password-encryption
+enable secret class
+banner motd #
+Unauthorized access is strictly prohibited. #
+
+line con 0
+password cisco
+login
+logging synchronous
+exit
+
+line vty 0 4
+password cisco
+login
+exit
+
+interface range f0/1-4,f0/7-24,g0/1-2
+shutdown
+
+end
+
+write memory
+

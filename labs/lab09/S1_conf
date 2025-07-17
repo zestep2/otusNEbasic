@@ -1,0 +1,22 @@
+enable
+configure terminal
+
+no ip domain-lookup
+hostname S1
+ip default-gateway 192.168.10.1
+
+interface fa0/6
+description TO-PC-A
+exit
+
+interface fa0/1
+description TO-S2
+exit
+
+interface fa0/5
+description TO-R1
+
+end
+
+write memory
+

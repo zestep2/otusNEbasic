@@ -21,14 +21,14 @@
 
 
 ### Часть 1. Настройка основного сетевого устройства
-Подключаем сеть в соответствии с топологией, заливаем конфиг на R1, настраиваем базовые параметры коммутаторов в соотвествии в заданием
+##### Подключаем сеть в соответствии с топологией, заливаем конфиг на R1, настраиваем базовые параметры коммутаторов в соотвествии в заданием
 
 [Настройка коммутатора S1](./S1_conf)
 
 [Настройка коммутатора S2](./S2_conf)
 
 ### Часть 2. Настройка сетей VLAN
-Создаем вланы на S1
+##### Создаем вланы на S1
 ```
 S1(config)#vlan 10
 S1(config-vlan)#name
@@ -47,7 +47,7 @@ S1(config-vlan)#name ParkingLot
 
 ### Часть 3. Настройки безопасности коммутатора
 #### Шаг 1. Релизация магистральных соединений 802.1Q.
-Настроим транки на коммутаторах:
+##### Настроим транки на коммутаторах:
 ```
 S1(config)#interface fa0/1
 S1(config-if)#sw mode tru
@@ -55,14 +55,14 @@ S1(config-if)#sw trunk native vlan 333
 ```
 Аналогично для S2.
 
-Отключаем согласование DTP на fa0/1:
+##### Отключаем согласование DTP на fa0/1:
 ```
 S1(config)#interface fa0/1
 S1(config-if)#switchport nonegotiate 
 ```
 Аналогично для S2.
 
-Проверим применение настроек:
+##### Проверим применение настроек:
 ```
 S1#show interfaces fa0/1 switchport 
 Name: Fa0/1
@@ -76,7 +76,7 @@ Negotiation of Trunking: Off
 Все применилось!
 
 ####  Шаг 2. Настройка портов доступа
-Настраиваем порты доступа
+##### Настраиваем порты доступа
 ```
 S1(config)#interface ra f0/5-6
 S1(config-if-range)#sw mo ac
@@ -89,7 +89,7 @@ S2(config-if)#sw ac vl 10
 ```
 
 ####  Шаг 3. Безопасность неиспользуемых портов коммутатора
-Переместим все используемые порты во влан 999 и отключим их:
+##### Переместим все используемые порты во влан 999 и отключим их:
 ```
 S1(config)#interface range fa0/2-4,f0/7-24,g0/1-2
 S1(config-if-range)#sw mo ac
@@ -103,7 +103,7 @@ S2(config-if-range)#sw ac vl 999
 S2(config-if-range)#shu
 ```
 
-Проверим:
+##### Проверим:
 ```
 S1#show interfaces status 
 Port      Name               Status       Vlan       Duplex  Speed Type
@@ -168,7 +168,7 @@ Gig0/2                       disabled 999        auto    auto  10/100BaseTX
 
 ####  Шаг 4. Документирование и реализация функций безопасности порта
 
-Проверим и заполним таблицу со значениями по-умолчанию:
+##### Проверим и заполним таблицу со значениями по-умолчанию:
 
 | Функция                          | Настройка по умолчанию       |
 |----------------------------------|-----------------------------|
@@ -180,7 +180,7 @@ Gig0/2                       disabled 999        auto    auto  10/100BaseTX
 | Secure Static Address Aging      | Disabled                    |
 | Sticky MAC Address               | 0                    |
 
-Включим защиту с настройками из задания:
+##### Включим защиту с настройками из задания:
 ```
 S1(config)#interface fa0/6
 S1(config-if)#sw port-security
@@ -190,7 +190,7 @@ S1(config-if)#switchport port-security aging time 60
 ```
 Устанавливать тип устаревания CPT не умеет
 
-Проверим:
+##### Проверим:
 ```
 S1#show port-security interface f0/6
 Port Security              : Enabled
@@ -220,7 +220,7 @@ Max Addresses limit in System (excluding one mac per port) : 1024
 ```
 Все ок!
 
-Настроим S2 по заданию:
+##### Настроим S2 по заданию:
 ```
 S2(config)#interface fa0/18
 S2(config-if)#switchport port-security 
@@ -231,7 +231,7 @@ S2(config-if)#switchport port-security violation protect
 S2(config-if)#switchport port-security mac-address sticky 
 ```
 
-Проверим:
+##### Проверим:
 ```
 S2#show port-security interface f0/18
 Port Security              : Enabled
@@ -262,12 +262,172 @@ Max Addresses limit in System (excluding one mac per port) : 1024
 Все ок!
 
 ####  Шаг 5. Реализовать безопасность DHCP snooping
-Настроим DHCP snooping на S2:
+##### Настроим DHCP snooping на S2:
+```
+S2(config)#ip dhcp snooping 
+S2(config)#ip dhcp snooping vlan 10
+S2(config)#interface fa0/1
+S2(config-if)#ip dhcp snooping trust 
+S2(config)#interface fa0/18
+S2(config-if)#ip dhcp snooping limit rate 5
+```
+##### Проверим:
+```
+S2#show ip dhcp snooping 
+Switch DHCP snooping is enabled
+DHCP snooping is configured on following VLANs:
+10
+Insertion of option 82 is enabled
+Option 82 on untrusted port is not allowed
+Verification of hwaddr field is enabled
+Interface                  Trusted    Rate limit (pps)
+-----------------------    -------    ----------------
+FastEthernet0/1            yes        unlimited       
+FastEthernet0/18           no         5 
+```
+Все ок!
+
+##### На PC-B освободим и обновим IP-адрес и проверими привязку отслеживания DHCP:
+Выключим опцию 82 в CPT:
+```
+S2(config)#no ip dhcp snooping information option 
+```
+```
+S2#show ip dhcp snooping binding
+MacAddress          IpAddress        Lease(sec)  Type           VLAN  Interface
+------------------  ---------------  ----------  -------------  ----  -----------------
+00:01:64:47:D1:63   192.168.10.11    0           dhcp-snooping  10    FastEthernet0/18
+Total number of bindings: 1
+```
+Все ок!
+
+####  Шаг 6. Реализация PortFast и BPDU Guard
+##### Включаем portfast и bpduguard на портах доступа:
+```
+S1(config)#interface fa0/6
+S1(config-if)#spanning-tree portfast 
+S1(config-if)#spanning-tree bpduguard enable 
+
+S2(config)#interface fa0/18
+S2(config-if)#spanning-tree portfast 
+S2(config-if)#spanning-tree bpduguard enable 
+```
+##### Проверим результат:
+```
+S1#show spanning-tree interface f0/6 detail
+
+
+
+Port 6 (FastEthernet0/6) of VLAN0010 is designated forwarding
+  Port path cost 19, Port priority 128, Port Identifier 128.6
+  Designated root has priority 32778, address 0004.9AE4.ACC6
+  Designated bridge has priority 32778, address 00E0.B052.E7CE
+  Designated port id is 128.6, designated path cost 19
+  Timers: message age 16, forward delay 0, hold 0
+  Number of transitions to forwarding state: 1
+  The port is in the portfast mode
+  Link type is point-to-point by default
+```
+```
+interface FastEthernet0/6
+ description TO-PC-A
+ switchport access vlan 10
+ switchport mode access
+ switchport port-security
+ switchport port-security maximum 3
+ switchport port-security violation restrict 
+ switchport port-security aging time 60
+ spanning-tree portfast
+ spanning-tree bpduguard enable
+```
+
+Все применилось успешно!
+
+
+##### Проверим связь от PC-A до всех устройств:
+
+```
+C:\>ping 192.168.10.11
+
+Pinging 192.168.10.11 with 32 bytes of data:
+
+Reply from 192.168.10.11: bytes=32 time<1ms TTL=128
+
+Ping statistics for 192.168.10.11:
+    Packets: Sent = 1, Received = 1, Lost = 0 (0% loss),
+Approximate round trip times in milli-seconds:
+    Minimum = 0ms, Maximum = 0ms, Average = 0ms
+
+Control-C
+^C
+C:\>ping 192.168.10.1
+
+Pinging 192.168.10.1 with 32 bytes of data:
+
+Reply from 192.168.10.1: bytes=32 time<1ms TTL=255
+
+Ping statistics for 192.168.10.1:
+    Packets: Sent = 1, Received = 1, Lost = 0 (0% loss),
+Approximate round trip times in milli-seconds:
+    Minimum = 0ms, Maximum = 0ms, Average = 0ms
+
+Control-C
+^C
+C:\>ping 192.168.10.201
+
+Pinging 192.168.10.201 with 32 bytes of data:
+
+Request timed out.
+Reply from 192.168.10.201: bytes=32 time<1ms TTL=255
+
+Ping statistics for 192.168.10.201:
+    Packets: Sent = 2, Received = 1, Lost = 1 (50% loss),
+Approximate round trip times in milli-seconds:
+    Minimum = 0ms, Maximum = 0ms, Average = 0ms
+
+Control-C
+^C
+C:\>ping 192.168.10.202
+
+Pinging 192.168.10.202 with 32 bytes of data:
+
+Request timed out.
+Reply from 192.168.10.202: bytes=32 time<1ms TTL=255
+
+Ping statistics for 192.168.10.202:
+    Packets: Sent = 2, Received = 1, Lost = 1 (50% loss),
+Approximate round trip times in milli-seconds:
+    Minimum = 0ms, Maximum = 0ms, Average = 0ms
+
+Control-C
+^C
+C:\>ping 10.10.1.1
+
+Pinging 10.10.1.1 with 32 bytes of data:
+
+Reply from 10.10.1.1: bytes=32 time<1ms TTL=255
+Reply from 10.10.1.1: bytes=32 time<1ms TTL=255
+
+Ping statistics for 10.10.1.1:
+    Packets: Sent = 2, Received = 2, Lost = 0 (0% loss),
+Approximate round trip times in milli-seconds:
+    Minimum = 0ms, Maximum = 0ms, Average = 0ms
+```
+
+Все работает, ура!
 
 
 
 
+### Вопросы для повторения
+1.	С точки зрения безопасности порта на S2, почему нет значения таймера для оставшегося возраста в минутах, когда было сконфигурировано динамическое обучение - sticky?
 
+Sticky адреса не удаляются автоматически и для них нет таймера. Они будут привязаны в текущей конфигурацци до перезагрузки коммутатора или ручного удаления
 
+2.	Что касается безопасности порта на S2, если вы загружаете скрипт текущей конфигурации на S2, почему порту 18 на PC-B никогда не получит IP-адрес через DHCP?
 
+Не понял вопроса, не могу сказать((
 
+3.	Что касается безопасности порта, в чем разница между типом абсолютного устаревания и типом устаревание по неактивности?
+
+Абсолютный удаляет MAC-адреса по таймеру не учитывая ничего кроме времени, по неактивности - учитывает факты передачи данных с этого MAC-адреса и обновляет время каждый раз.

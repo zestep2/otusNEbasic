@@ -1,0 +1,64 @@
+enable
+configure terminal
+
+no ip domain-lookup
+hostname R1
+service password-encryption
+enable secret class
+banner motd #
+Unauthorized access is strictly prohibited. #
+
+line con 0
+password cisco
+login
+logging synchronous
+exit
+
+line vty 0 4
+password cisco
+login
+exit
+
+interface g0/0/1.20
+encapsulation dot1Q 20
+description Management
+ip address 10.20.0.1 255.255.255.0
+exit
+
+interface g0/0/1.30
+encapsulation dot1Q 30
+description Operations
+ip address 10.30.0.1 255.255.255.0
+exit
+
+interface g0/0/1.40
+encapsulation dot1Q 40
+description Sales
+ip address 10.40.0.1 255.255.255.0
+exit
+
+interface g0/0/1.1000
+encapsulation dot1Q 1000 native
+description Native
+exit
+
+interface loopback 1
+ip address 172.16.1.1 255.255.255.0
+exit
+
+interface g0/0/1
+no shut
+exit
+
+
+ip domain-name ccna-lab.com
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+username SSHadmin privilege 15 secret $cisco123!
+login local 
+exit
+
+end
+
+write memory
+

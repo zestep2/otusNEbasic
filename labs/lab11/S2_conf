@@ -1,0 +1,79 @@
+enable
+configure terminal
+
+no ip domain-lookup
+hostname S2
+service password-encryption
+enable secret class
+banner motd #
+Unauthorized access is strictly prohibited. #
+
+line con 0
+password cisco
+login
+logging synchronous
+exit
+
+line vty 0 4
+password cisco
+login
+exit
+
+ip default-gateway 10.20.0.1
+
+ip domain-name ccna-lab.com
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+username SSHadmin privilege 15 secret $cisco123!
+login local 
+exit
+
+vlan 20
+name Management
+exit
+
+vlan 30
+name Operations
+exit
+
+vlan 40
+name Sales
+exit
+
+vlan 999
+name ParkingLot
+exit
+
+vlan 1000
+name Native
+exit
+
+interface vlan 20
+ip address 10.20.0.3
+exit
+
+interface fa0/18
+sw mo access
+sw ac vlan 40
+exit
+
+interface fa0/5
+sw mo access
+sw ac vlan 20
+exit
+
+interface fa0/1
+sw mo tr
+sw tru nati vlan 1000
+sw tru allo vlan 10,20,30,40,1000
+exit
+
+interface range F0/2-4, F0/6-17, F0/19-24, G0/1-2
+sw mod ac
+sw ac vla 999
+shut
+
+end
+
+write memory
+

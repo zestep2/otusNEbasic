@@ -1,0 +1,42 @@
+enable
+configure terminal
+
+no ip domain-lookup
+hostname R2
+service password-encryption
+enable secret class
+banner motd #
+Unauthorized access is strictly prohibited. #
+
+line con 0
+password cisco
+login
+logging synchronous
+exit
+
+line vty 0 4
+password cisco
+login
+exit
+
+interface gigabitEthernet 0/0/1
+no shutdown
+ip address 10.20.0.4 255.255.255.0
+exit
+
+ip route 0.0.0.0 0.0.0.0 10.20.0.1
+
+ip domain-name ccna-lab.com
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+username SSHadmin privilege 15 secret $cisco123!
+line vty 0 4
+transport input ssh
+login local 
+exit
+
+
+end
+
+write memory
+

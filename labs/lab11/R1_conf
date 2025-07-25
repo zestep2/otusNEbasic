@@ -42,8 +42,9 @@ encapsulation dot1Q 1000 native
 description Native
 exit
 
-interface loopback 1
+interface g0/0/0
 ip address 172.16.1.1 255.255.255.0
+no sh
 exit
 
 interface g0/0/1

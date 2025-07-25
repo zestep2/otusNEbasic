@@ -52,6 +52,11 @@ interface vlan 20
 ip address 10.20.0.2
 exit
 
+interface fa0/2
+sw mo access
+sw ac vlan 20
+exit
+
 interface fa0/6
 sw mo access
 sw ac vlan 30
@@ -63,7 +68,7 @@ sw tru nati vlan 1000
 sw tru allo vlan 10,20,30,40,1000
 exit
 
-interface range fa0/2-3, fa0/7-24,g0/1-2
+interface range fa0/3, fa0/7-24,g0/1-2
 sw mod ac
 sw ac vla 999
 shut

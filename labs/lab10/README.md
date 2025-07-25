@@ -240,7 +240,7 @@ Codes: L - local, C - connected, S - static, R - RIP, M - mobile, B - BGP
        * - candidate default, U - per-user static route, o - ODR
        P - periodic downloaded static route
 
-Gateway of last resort is not set
+Gateway of last resort is 10.53.0.1 to network 0.0.0.0
 
      10.0.0.0/8 is variably subnetted, 2 subnets, 2 masks
 C       10.53.0.0/24 is directly connected, GigabitEthernet0/0/1
@@ -248,13 +248,24 @@ L       10.53.0.2/32 is directly connected, GigabitEthernet0/0/1
      192.168.1.0/24 is variably subnetted, 2 subnets, 2 masks
 C       192.168.1.0/24 is directly connected, Loopback1
 L       192.168.1.1/32 is directly connected, Loopback1
+O*E2 0.0.0.0/0 [110/1] via 10.53.0.1, 00:00:26, GigabitEthernet0/0/1
 ```
-Как видно, ни одного маршрута от OSPF а
+Видим маршрут по-умолчанию от R1
 
-А ДОЛЖЕН БЫТЬ ДЕФОЛТНЫЙ ДО ЛУПБЭКА НА Р1, И ОН БЫЛ! И КУДА ДЕЛАСЯ КА ВОССТАНОВИТЬ???
+#### Запустим ping до адреса интерфейса R1 Loopback 1 из R2:
+```
+R2#ping 172.16.1.1
 
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 172.16.1.1, timeout is 2 seconds:
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 0/1/7 ms
+```
+Успешно! Был использован маршрут по умолчанию
 
+### Вопрос:
+Почему стоимость OSPF для маршрута по умолчанию отличается от стоимости OSPF в R1 для сети 192.168.1.0/24?
 
-
-
+### Ответ:
+Потому что, loopback-интерфейсы по умолчанию имеют стоимость 1, а стоимость обычных интерфейсов (в нашем случае для сети 192.168.1.0/24 эта стоимость равна 10) вычисляется по пропускной способности
 
